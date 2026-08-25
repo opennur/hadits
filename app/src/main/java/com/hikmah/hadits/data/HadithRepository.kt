@@ -11,6 +11,7 @@ import com.hikmah.hadits.data.local.HadithEntity
 import com.hikmah.hadits.data.remote.EditionHadithDto
 import com.hikmah.hadits.data.remote.HadithApi
 import com.hikmah.hadits.data.remote.HadithDetailDto
+import com.hikmah.hadits.data.remote.HadithIntegrityValidator
 import com.hikmah.hadits.data.remote.HadithSearchApi
 import com.hikmah.hadits.data.remote.HadithItemDto
 import com.hikmah.hadits.model.Book
@@ -64,7 +65,11 @@ class HadithRepository private constructor(
         val bookName = DEFAULT_BOOKS.firstOrNull { it.id == bookId }?.name ?: bookId.titleCase()
         val page = ((from - 1) / PAGE_SIZE) + 1
         val response = api.getHadithPage(bookId.apiSlug(), page = page, limit = PAGE_SIZE)
-        val hadiths = response.items.orEmpty().mapNotNull { dto ->
+        val hadiths = HadithIntegrityValidator.validPageItems(
+            page = response,
+            firstNumber = (page - 1) * PAGE_SIZE + 1,
+            pageSize = PAGE_SIZE,
+        ).mapNotNull { dto ->
             dto.toEntity(bookId, bookName)
         }
         if (hadiths.isEmpty()) error("Data hadits tidak tersedia")
@@ -76,7 +81,12 @@ class HadithRepository private constructor(
 
     suspend fun refreshDetail(bookId: String, number: Int): Result<Unit> = runCatching {
         val bookName = DEFAULT_BOOKS.firstOrNull { it.id == bookId }?.name ?: bookId.titleCase()
-        val hadith = api.getHadithDetail(bookId.apiSlug(), number).toEntity(bookId, bookName)
+        val apiSlug = bookId.apiSlug()
+        val detail = api.getHadithDetail(apiSlug, number)
+        if (!HadithIntegrityValidator.isValidDetail(detail, apiSlug, number)) {
+            error("Respons detail hadits tidak cocok")
+        }
+        val hadith = detail.toEntity(bookId, bookName)
             ?: error("Data hadits tidak tersedia")
         saveHadiths(listOf(hadith))
     }
