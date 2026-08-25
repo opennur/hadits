@@ -144,6 +144,24 @@ Menjalankan unit test dan lint:
 
 Perintah di atas tidak menggunakan flag `--no-daemon`.
 
+## Release Signed
+
+Build release memakai konfigurasi signing lokal dari `keystore.properties`, yang tidak dilacak Git. Keystore development berada di `signing/release.keystore` dan memakai alias `hikmah-release`.
+
+Build release signed:
+
+```bash
+./gradlew :app:assembleRelease
+```
+
+APK release:
+
+```text
+app/build/outputs/apk/release/app-release.apk
+```
+
+Untuk distribusi produksi, ganti keystore development dengan keystore produksi milik organisasi dan jangan membagikan private key atau password-nya.
+
 ## Validasi Data
 
 Test dan validator aplikasi memeriksa integritas teknis respons, termasuk:

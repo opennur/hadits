@@ -139,6 +139,24 @@ Run unit tests and lint:
 
 The commands above intentionally do not use the `--no-daemon` flag.
 
+## Signed Release
+
+Release builds use the local signing configuration from `keystore.properties`, which is ignored by Git. The development keystore is located at `signing/release.keystore` and uses the `hikmah-release` alias.
+
+Build the signed release APK:
+
+```bash
+./gradlew :app:assembleRelease
+```
+
+Release APK:
+
+```text
+app/build/outputs/apk/release/app-release.apk
+```
+
+For production distribution, replace the development keystore with an organization-owned production keystore and never share its private key or password.
+
 ## Data Validation
 
 Application tests and validators check the technical integrity of responses, including:
