@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items as lazyItems
@@ -65,6 +66,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -281,7 +283,21 @@ fun CollectionScreen(
     onFavorite: (Hadith) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
+    onJumpToNumber: (Int) -> Unit,
+    onJumpHandled: () -> Unit,
 ) {
+    var numberText by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(state.jumpTarget, state.hadiths) {
+        val target = state.jumpTarget ?: return@LaunchedEffect
+        val index = state.hadiths.indexOfFirst { it.number == target }
+        if (index >= 0) {
+            listState.animateScrollToItem(index + 2)
+            onJumpHandled()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -307,6 +323,7 @@ fun CollectionScreen(
         },
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = 20.dp,
@@ -322,6 +339,55 @@ fun CollectionScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    OutlinedTextField(
+                        value = numberText,
+                        onValueChange = { value ->
+                            numberText = value.filter(Char::isDigit).take(6)
+                        },
+                        modifier = Modifier.weight(1f),
+                        label = { Text("Nomor hadits") },
+                        placeholder = { Text("Contoh: 125") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Go,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onGo = { numberText.toIntOrNull()?.let(onJumpToNumber) },
+                        ),
+                    )
+                    Button(
+                        onClick = { numberText.toIntOrNull()?.let(onJumpToNumber) },
+                        enabled = numberText.isNotBlank() && !state.isJumping,
+                        modifier = Modifier.height(56.dp),
+                    ) {
+                        if (state.isJumping) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Text("Lompat")
+                        }
+                    }
+                }
+            }
+            if (state.jumpError != null) {
+                item {
+                    Text(
+                        state.jumpError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
             if (state.isLoading && state.hadiths.isEmpty()) {
                 item { LoadingCard() }

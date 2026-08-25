@@ -29,6 +29,9 @@ data class BookUiState(
     val isLoadingMore: Boolean = false,
     val error: String? = null,
     val loadedUntil: Int = 0,
+    val jumpTarget: Int? = null,
+    val isJumping: Boolean = false,
+    val jumpError: String? = null,
 )
 
 data class SearchUiState(
@@ -134,6 +137,37 @@ class HadithViewModel(
                 error = result.exceptionOrNull()?.let { "Gagal memuat halaman berikutnya." },
             )
         }
+    }
+
+    fun jumpToHadith(number: Int) {
+        val bookId = _bookState.value.bookId ?: return
+        if (number < 1) return
+
+        val cached = _bookState.value.hadiths.any { it.number == number }
+        if (cached) {
+            _bookState.value = _bookState.value.copy(jumpTarget = number, jumpError = null)
+            return
+        }
+
+        _bookState.value = _bookState.value.copy(
+            isJumping = true,
+            jumpTarget = null,
+            jumpError = null,
+        )
+        viewModelScope.launch {
+            val result = repository.refreshBook(bookId, number, number)
+            _bookState.value = _bookState.value.copy(
+                isJumping = false,
+                jumpTarget = if (result.isSuccess) number else null,
+                jumpError = result.exceptionOrNull()?.let {
+                    "Hadits nomor $number belum dapat dimuat."
+                },
+            )
+        }
+    }
+
+    fun consumeJumpTarget() {
+        _bookState.value = _bookState.value.copy(jumpTarget = null)
     }
 
     fun search(query: String) {

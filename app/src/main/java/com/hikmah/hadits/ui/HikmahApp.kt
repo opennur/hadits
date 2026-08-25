@@ -154,6 +154,8 @@ fun HikmahApp(
                     onFavorite = viewModel::toggleFavorite,
                     onLoadMore = viewModel::loadMore,
                     onRetry = { viewModel.loadBook(bookId) },
+                    onJumpToNumber = viewModel::jumpToHadith,
+                    onJumpHandled = viewModel::consumeJumpTarget,
                 )
             }
             composable("detail/{bookId}/{number}") { entry ->
