@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -41,6 +43,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,9 +56,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,6 +84,7 @@ import com.hikmah.hadits.ui.components.BookCard
 import com.hikmah.hadits.ui.components.EmptyState
 import com.hikmah.hadits.ui.components.HadithCard
 import com.hikmah.hadits.ui.components.LoadingCard
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -288,17 +294,30 @@ fun CollectionScreen(
 ) {
     var numberText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val showBackToTop by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 1 }
+    }
 
     LaunchedEffect(state.jumpTarget, state.hadiths) {
         val target = state.jumpTarget ?: return@LaunchedEffect
         val index = state.hadiths.indexOfFirst { it.number == target }
         if (index >= 0) {
-            listState.animateScrollToItem(index + 2)
+            listState.scrollToItem(index + 2)
             onJumpHandled()
         }
     }
 
     Scaffold(
+        floatingActionButton = {
+            if (showBackToTop) {
+                FloatingActionButton(
+                    onClick = { coroutineScope.launch { listState.scrollToItem(0) } },
+                ) {
+                    Icon(Icons.Outlined.KeyboardArrowUp, contentDescription = "Kembali ke atas")
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -329,7 +348,7 @@ fun CollectionScreen(
                 start = 20.dp,
                 end = 20.dp,
                 top = padding.calculateTopPadding() + 8.dp,
-                bottom = padding.calculateBottomPadding() + 20.dp,
+                bottom = padding.calculateBottomPadding() + 96.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -483,8 +502,26 @@ fun SearchScreen(
             if (!state.hasSearched) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Cari berdasarkan tema", style = MaterialTheme.typography.titleMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("Sabar", "Sedekah", "Niat").forEach { suggestion ->
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(end = 20.dp),
+                    ) {
+                        lazyItems(
+                            listOf(
+                                "Sabar",
+                                "Sedekah",
+                                "Niat",
+                                "Shalat",
+                                "Puasa",
+                                "Doa",
+                                "Akhlak",
+                                "Ilmu",
+                                "Rezeki",
+                                "Taubat",
+                                "Orang tua",
+                                "Silaturahmi",
+                            ),
+                        ) { suggestion ->
                             AssistChip(
                                 onClick = { query = suggestion; onSearch(suggestion) },
                                 label = { Text(suggestion) },
