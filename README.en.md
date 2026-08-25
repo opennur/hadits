@@ -143,6 +143,8 @@ The commands above intentionally do not use the `--no-daemon` flag.
 
 Release builds use the local signing configuration from `keystore.properties`, which is ignored by Git. The development keystore is located at `signing/release.keystore` and uses the `hikmah-release` alias.
 
+Release builds enable R8 and resource shrinking to reduce APK size.
+
 Build the signed release APK:
 
 ```bash

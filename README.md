@@ -148,6 +148,8 @@ Perintah di atas tidak menggunakan flag `--no-daemon`.
 
 Build release memakai konfigurasi signing lokal dari `keystore.properties`, yang tidak dilacak Git. Keystore development berada di `signing/release.keystore` dan memakai alias `hikmah-release`.
 
+Build release mengaktifkan R8 dan resource shrinking untuk mengurangi ukuran APK.
+
 Build release signed:
 
 ```bash
