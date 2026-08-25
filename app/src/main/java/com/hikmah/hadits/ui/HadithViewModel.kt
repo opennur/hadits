@@ -215,8 +215,30 @@ class HadithViewModel(
     }
 
     fun toggleFavorite(hadith: Hadith) {
+        val favorite = !hadith.isFavorite
+        updateFavoriteInUi(hadith, favorite)
         viewModelScope.launch {
-            repository.setFavorite(hadith, !hadith.isFavorite)
+            runCatching {
+                repository.setFavorite(hadith, favorite)
+            }.onFailure {
+                updateFavoriteInUi(hadith, hadith.isFavorite)
+            }
+        }
+    }
+
+    private fun updateFavoriteInUi(hadith: Hadith, favorite: Boolean) {
+        _bookState.value = _bookState.value.copy(
+            hadiths = _bookState.value.hadiths.map { item ->
+                if (item.id == hadith.id) item.copy(isFavorite = favorite) else item
+            },
+        )
+        _searchState.value = _searchState.value.copy(
+            results = _searchState.value.results.map { item ->
+                if (item.id == hadith.id) item.copy(isFavorite = favorite) else item
+            },
+        )
+        if (_detail.value?.id == hadith.id) {
+            _detail.value = _detail.value?.copy(isFavorite = favorite)
         }
     }
 

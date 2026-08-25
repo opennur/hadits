@@ -667,7 +667,18 @@ fun DetailScreen(
                 hadith = hadith,
                 padding = padding,
                 onCopy = {
-                    clipboard.setText(AnnotatedString("${hadith.arabic}\n\n${hadith.translation}"))
+                    clipboard.setText(
+                        AnnotatedString(
+                            buildString {
+                                if (hadith.arabic.isNotBlank()) {
+                                    append(hadith.arabic)
+                                    append("\n\n")
+                                }
+                                append(hadith.translation)
+                                append("\n\nHadits riwayat ${hadith.bookName} nomor ${hadith.number}.")
+                            },
+                        ),
+                    )
                 },
             )
         }
