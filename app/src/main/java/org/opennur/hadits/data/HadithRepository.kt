@@ -41,6 +41,12 @@ class HadithRepository private constructor(
     private val api: HadithApi,
     private val searchApi: HadithSearchApi,
 ) {
+    data class SearchPage(
+        val results: List<Hadith>,
+        val hasMore: Boolean,
+        val total: Int,
+    )
+
     private val bookDao = database.bookDao()
     private val hadithDao = database.hadithDao()
     private val downloadDao = database.downloadDao()
@@ -109,7 +115,7 @@ class HadithRepository private constructor(
                         val hadiths = response.hadiths.orEmpty().mapNotNull { dto ->
                             dto.toEntity(bookId, bookName, arabic = "")
                         }
-                        if (hadiths.isNotEmpty()) saveHadiths(hadiths)
+                        if (hadiths.isNotEmpty()) saveSearchHadiths(hadiths)
                         hadiths.isNotEmpty()
                     }.getOrDefault(false)
                 }
@@ -118,8 +124,30 @@ class HadithRepository private constructor(
         if (loadedBooks.none { it }) error("Pencarian gagal")
     }
 
-    suspend fun searchCached(query: String): List<Hadith> = withContext(Dispatchers.IO) {
-        hadithDao.search(query.trim()).map { it.toModel() }
+    suspend fun searchCached(query: String, offset: Int = 0): SearchPage = withContext(Dispatchers.IO) {
+        val cleanQuery = query.trim()
+        val rowsDeferred = async {
+            hadithDao.search(
+                query = cleanQuery,
+                limit = SEARCH_PAGE_SIZE + 1,
+                offset = offset,
+            )
+        }
+        val totalDeferred = async { hadithDao.countSearch(cleanQuery) }
+        val rows = rowsDeferred.await()
+        val total = totalDeferred.await()
+        SearchPage(
+            results = rows.take(SEARCH_PAGE_SIZE).map { it.toModel() },
+            hasMore = offset + rows.size < total,
+            total = total,
+        )
+    }
+
+    suspend fun isPrimarySearchIndexReady(): Boolean = withContext(Dispatchers.IO) {
+        val books = bookDao.getBooks().ifEmpty { DEFAULT_BOOKS }
+        books.filter { it.id == "bukhari" || it.id == "muslim" }.all { book ->
+            hadithDao.countByBook(book.id) >= book.available
+        }
     }
 
     suspend fun setFavorite(hadith: Hadith, favorite: Boolean) = withContext(Dispatchers.IO) {
@@ -284,6 +312,19 @@ class HadithRepository private constructor(
         }
     }
 
+    private suspend fun saveSearchHadiths(hadiths: List<HadithEntity>) {
+        val bookId = hadiths.firstOrNull()?.bookId ?: return
+        val existing = hadithDao.getByBook(bookId).associateBy { it.number }
+        val merged = hadiths.map { incoming ->
+            val old = existing[incoming.number]
+            incoming.copy(
+                arabic = old?.arabic?.takeIf { it.isNotBlank() } ?: incoming.arabic,
+                isFavorite = old?.isFavorite ?: incoming.isFavorite,
+            )
+        }
+        hadithDao.replaceAll(merged)
+    }
+
     private fun BookEntity.toModel() = Book(id, name, available)
 
     private fun HadithEntity.toModel() = Hadith(
@@ -355,6 +396,7 @@ class HadithRepository private constructor(
         private const val BASE_URL = "https://hadis-api-id.vercel.app/"
         private const val SEARCH_BASE_URL = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/"
         private const val PAGE_SIZE = 20
+        private const val SEARCH_PAGE_SIZE = 80
 
         private val DEFAULT_BOOKS = listOf(
             BookEntity("bukhari", "Shahih Bukhari", 6638),

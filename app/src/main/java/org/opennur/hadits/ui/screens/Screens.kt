@@ -452,11 +452,29 @@ fun SearchScreen(
     state: SearchUiState,
     onBack: () -> Unit,
     onSearch: (String) -> Unit,
+    onLoadMore: () -> Unit,
     onOpenHadith: (Hadith) -> Unit,
     onFavorite: (Hadith) -> Unit,
     onClear: () -> Unit,
 ) {
     var query by remember { mutableStateOf(state.query) }
+    val listState = rememberLazyListState()
+    val shouldLoadMore by remember(state.hasMore, state.isLoadingMore, state.results.size) {
+        derivedStateOf {
+            state.hasMore &&
+                !state.isLoadingMore &&
+                state.results.isNotEmpty() &&
+                (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= state.results.lastIndex - 5
+        }
+    }
+
+    LaunchedEffect(state.query) {
+        listState.scrollToItem(0)
+    }
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) onLoadMore()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -542,12 +560,13 @@ fun SearchScreen(
                 )
             } else {
                 Text(
-                    "${state.results.size} hadits ditemukan",
+                    "${state.results.size} dari ${state.totalResults} hadits",
                     modifier = Modifier.padding(bottom = 10.dp),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 20.dp),
@@ -558,6 +577,18 @@ fun SearchScreen(
                             onClick = { onOpenHadith(hadith) },
                             onFavorite = { onFavorite(hadith) },
                         )
+                    }
+                    item {
+                        if (state.isLoadingMore) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp)
+                            }
+                        } else if (state.hasMore) {
+                            Spacer(Modifier.height(8.dp))
+                        }
                     }
                 }
             }

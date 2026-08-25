@@ -40,7 +40,10 @@ data class SearchUiState(
     val query: String = "",
     val results: List<Hadith> = emptyList(),
     val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
     val hasSearched: Boolean = false,
+    val hasMore: Boolean = false,
+    val totalResults: Int = 0,
     val error: String? = null,
 )
 
@@ -83,6 +86,7 @@ class HadithViewModel(
 
     private var bookObserver: Job? = null
     private var detailObserver: Job? = null
+    private var searchJob: Job? = null
     private var currentBookId: String? = null
 
     init {
@@ -176,24 +180,46 @@ class HadithViewModel(
     fun search(query: String) {
         val cleanQuery = query.trim()
         if (cleanQuery.isBlank()) return
+        searchJob?.cancel()
         _searchState.value = SearchUiState(query = cleanQuery, isLoading = true, hasSearched = true)
-        viewModelScope.launch {
-            val cached = repository.searchCached(cleanQuery)
-            if (cached.isNotEmpty()) {
-                _searchState.value = _searchState.value.copy(results = cached, isLoading = false)
-                return@launch
+        searchJob = viewModelScope.launch {
+            var page = repository.searchCached(cleanQuery)
+            var remoteResult: Result<Unit>? = null
+            if (!repository.isPrimarySearchIndexReady()) {
+                remoteResult = repository.searchRemote(cleanQuery)
+                page = repository.searchCached(cleanQuery)
             }
-            val result = repository.searchRemote(cleanQuery)
-            val refreshed = repository.searchCached(cleanQuery)
             _searchState.value = _searchState.value.copy(
-                results = refreshed,
+                results = page.results,
                 isLoading = false,
-                error = if (result.isFailure && refreshed.isEmpty()) {
+                hasMore = page.hasMore,
+                totalResults = page.total,
+                error = if (remoteResult?.isFailure == true && page.results.isEmpty()) {
                     "Pencarian memerlukan koneksi internet."
                 } else {
                     null
                 },
             )
+        }
+    }
+
+    fun loadMoreSearch() {
+        val state = _searchState.value
+        if (state.query.isBlank() || state.isLoading || state.isLoadingMore || !state.hasMore) return
+        val query = state.query
+        val offset = state.results.size
+        _searchState.value = state.copy(isLoadingMore = true)
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            val page = repository.searchCached(query, offset)
+            if (_searchState.value.query == query) {
+                _searchState.value = _searchState.value.copy(
+                    results = _searchState.value.results + page.results,
+                    hasMore = page.hasMore,
+                    totalResults = page.total,
+                    isLoadingMore = false,
+                )
+            }
         }
     }
 
@@ -299,6 +325,7 @@ class HadithViewModel(
     }
 
     fun clearSearch() {
+        searchJob?.cancel()
         _searchState.value = SearchUiState()
     }
 

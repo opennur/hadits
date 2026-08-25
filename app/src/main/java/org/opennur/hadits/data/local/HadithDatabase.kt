@@ -58,6 +58,9 @@ interface HadithDao {
     @Query("SELECT * FROM hadiths WHERE bookId = :bookId ORDER BY number")
     fun observeByBook(bookId: String): Flow<List<HadithEntity>>
 
+    @Query("SELECT COUNT(*) FROM hadiths WHERE bookId = :bookId")
+    suspend fun countByBook(bookId: String): Int
+
     @Query("SELECT * FROM hadiths WHERE bookId = :bookId AND number = :number LIMIT 1")
     fun observeDetail(bookId: String, number: Int): Flow<HadithEntity?>
 
@@ -69,15 +72,26 @@ interface HadithDao {
             "WHERE arabic LIKE '%' || :query || '%' " +
             "OR translation LIKE '%' || :query || '%' " +
             "OR bookName LIKE '%' || :query || '%' " +
-            "ORDER BY bookName, number LIMIT 80",
+            "ORDER BY bookName, number LIMIT :limit OFFSET :offset",
     )
-    suspend fun search(query: String): List<HadithEntity>
+    suspend fun search(query: String, limit: Int, offset: Int): List<HadithEntity>
+
+    @Query(
+        "SELECT COUNT(*) FROM hadiths " +
+            "WHERE arabic LIKE '%' || :query || '%' " +
+            "OR translation LIKE '%' || :query || '%' " +
+            "OR bookName LIKE '%' || :query || '%'",
+    )
+    suspend fun countSearch(query: String): Int
 
     @Query("SELECT * FROM hadiths WHERE isFavorite = 1 ORDER BY bookName, number")
     fun observeFavorites(): Flow<List<HadithEntity>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(hadiths: List<HadithEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun replaceAll(hadiths: List<HadithEntity>)
 
     @Query(
         "UPDATE hadiths SET arabic = :arabic, translation = :translation, " +

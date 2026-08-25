@@ -114,6 +114,7 @@ fun HikmahApp(
                     state = searchState,
                     onBack = { navController.popBackStack() },
                     onSearch = viewModel::search,
+                    onLoadMore = viewModel::loadMoreSearch,
                     onOpenHadith = { hadith ->
                         navController.navigate("detail/${hadith.bookId}/${hadith.number}")
                     },
