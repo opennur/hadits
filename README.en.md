@@ -1,8 +1,8 @@
 # Hikmah
 
-An Android application for reading, searching, saving, and downloading Indonesian hadith collections.
+[Baca dalam Bahasa Indonesia](README.md)
 
-[Read the Indonesian documentation](README.md)
+An Android application for reading, searching, saving, and downloading Indonesian hadith collections.
 
 ## Features
 
