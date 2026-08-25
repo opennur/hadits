@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.hikmah.hadits"
+    namespace = "org.opennur.hadits"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.hikmah.hadits"
+        applicationId = "org.opennur.hadits"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
