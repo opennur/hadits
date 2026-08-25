@@ -14,7 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items as lazyItems
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -90,12 +94,14 @@ fun HomeScreen(
     onDownload: () -> Unit,
     onBookClick: (Book) -> Unit,
 ) {
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,
@@ -124,10 +130,10 @@ fun HomeScreen(
                 }
             }
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             SearchLauncher(onClick = onSearch)
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Card(
                 onClick = onDownload,
                 modifier = Modifier.fillMaxWidth(),
@@ -155,7 +161,7 @@ fun HomeScreen(
                 }
             }
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(26.dp),
@@ -213,27 +219,27 @@ fun HomeScreen(
             }
         }
         if (isLoading && books.isEmpty()) {
-            item { LoadingCard() }
+            item(span = { GridItemSpan(maxLineSpan) }) { LoadingCard() }
         } else if (books.isEmpty()) {
-            item {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 EmptyState(
                     title = "Koleksi belum tersedia",
                     message = error ?: "Coba muat ulang untuk mengambil data kitab.",
                 )
             }
         } else {
-            items(books, key = { it.id }) { book ->
+            gridItems(books, key = { it.id }) { book ->
                 BookCard(book = book, onClick = { onBookClick(book) })
             }
             if (error != null) {
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     TextButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
                         Text("Coba muat ulang")
                     }
                 }
             }
         }
-        item { Spacer(Modifier.navigationBarsPadding()) }
+        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.navigationBarsPadding()) }
     }
 }
 
@@ -328,7 +334,7 @@ fun CollectionScreen(
                     }
                 }
             } else {
-                items(state.hadiths, key = { "${it.bookId}-${it.number}" }) { hadith ->
+                lazyItems(state.hadiths, key = { "${it.bookId}-${it.number}" }) { hadith ->
                     HadithCard(
                         hadith = hadith,
                         onClick = { onOpenHadith(hadith) },
@@ -439,7 +445,7 @@ fun SearchScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 20.dp),
                 ) {
-                    items(state.results, key = { "${it.bookId}-${it.number}" }) { hadith ->
+                    lazyItems(state.results, key = { "${it.bookId}-${it.number}" }) { hadith ->
                         HadithCard(
                             hadith = hadith,
                             onClick = { onOpenHadith(hadith) },
@@ -482,7 +488,7 @@ fun FavoritesScreen(
                 )
             }
         } else {
-            items(favorites, key = { "${it.bookId}-${it.number}" }) { hadith ->
+            lazyItems(favorites, key = { "${it.bookId}-${it.number}" }) { hadith ->
                 HadithCard(
                     hadith = hadith,
                     onClick = { onOpenHadith(hadith) },
