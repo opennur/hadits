@@ -19,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
@@ -26,6 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -34,9 +37,14 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,7 +60,11 @@ fun DownloadManagerScreen(
     onBack: () -> Unit,
     onStart: (resume: Boolean) -> Unit,
     onCancel: () -> Unit,
+    onStartBook: (bookId: String, resume: Boolean) -> Unit,
+    onCancelBook: (bookId: String) -> Unit,
+    onDeleteBook: (bookId: String) -> Unit,
 ) {
+    var deleteTarget by remember { mutableStateOf<DownloadItem?>(null) }
     val active = downloads.any {
         it.status == DownloadStatus.QUEUED || it.status == DownloadStatus.DOWNLOADING
     }
@@ -160,16 +172,49 @@ fun DownloadManagerScreen(
                     Text("Status per kitab", style = MaterialTheme.typography.titleMedium)
                 }
                 items(downloads, key = { it.bookId }) { item ->
-                    DownloadBookRow(item)
+                    DownloadBookRow(
+                        item = item,
+                        onStart = { resume -> onStartBook(item.bookId, resume) },
+                        onCancel = { onCancelBook(item.bookId) },
+                        onDelete = { deleteTarget = item },
+                    )
                 }
             }
             item { Spacer(Modifier.navigationBarsPadding()) }
         }
     }
+
+    deleteTarget?.let { item ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Hapus unduhan?") },
+            text = {
+                Text("Semua hadits ${item.bookName} yang tersimpan offline akan dihapus dari perangkat.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteBook(item.bookId)
+                        deleteTarget = null
+                    },
+                ) {
+                    Text("Hapus", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) { Text("Batal") }
+            },
+        )
+    }
 }
 
 @Composable
-private fun DownloadBookRow(item: DownloadItem) {
+private fun DownloadBookRow(
+    item: DownloadItem,
+    onStart: (resume: Boolean) -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val icon = when (item.status) {
         DownloadStatus.COMPLETED -> Icons.Outlined.CheckCircle
         DownloadStatus.FAILED -> Icons.Outlined.ErrorOutline
@@ -221,8 +266,22 @@ private fun DownloadBookRow(item: DownloadItem) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                if (item.status == DownloadStatus.DOWNLOADING) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                when (item.status) {
+                    DownloadStatus.COMPLETED -> {
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Outlined.Delete, contentDescription = "Hapus unduhan ${item.bookName}")
+                        }
+                    }
+                    DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING -> {
+                        IconButton(onClick = onCancel) {
+                            Icon(Icons.Outlined.Close, contentDescription = "Batalkan ${item.bookName}")
+                        }
+                    }
+                    DownloadStatus.FAILED, DownloadStatus.CANCELLED -> {
+                        IconButton(onClick = { onStart(item.downloaded > 0) }) {
+                            Icon(Icons.Outlined.CloudDownload, contentDescription = "Unduh ${item.bookName}")
+                        }
+                    }
                 }
             }
             if (item.status != DownloadStatus.COMPLETED) {

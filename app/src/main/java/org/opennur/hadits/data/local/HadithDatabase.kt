@@ -61,6 +61,9 @@ interface HadithDao {
     @Query("SELECT * FROM hadiths WHERE bookId = :bookId AND number = :number LIMIT 1")
     fun observeDetail(bookId: String, number: Int): Flow<HadithEntity?>
 
+    @Query("DELETE FROM hadiths WHERE bookId = :bookId")
+    suspend fun deleteByBook(bookId: String)
+
     @Query(
         "SELECT * FROM hadiths " +
             "WHERE arabic LIKE '%' || :query || '%' " +
@@ -102,6 +105,9 @@ interface DownloadDao {
     @Query("SELECT * FROM downloads WHERE bookId = :bookId LIMIT 1")
     suspend fun get(bookId: String): DownloadEntity?
 
+    @Query("SELECT * FROM downloads ORDER BY bookName")
+    suspend fun getAll(): List<DownloadEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(downloads: List<DownloadEntity>)
 
@@ -125,6 +131,12 @@ interface DownloadDao {
             "WHERE status IN ('QUEUED', 'DOWNLOADING')",
     )
     suspend fun updateActiveStatus(status: String, error: String?, updatedAt: Long)
+
+    @Query(
+        "UPDATE downloads SET downloaded = 0, status = 'CANCELLED', error = NULL, " +
+            "updatedAt = :updatedAt WHERE bookId = :bookId",
+    )
+    suspend fun resetBook(bookId: String, updatedAt: Long)
 }
 
 @Database(entities = [BookEntity::class, HadithEntity::class, DownloadEntity::class], version = 2, exportSchema = false)

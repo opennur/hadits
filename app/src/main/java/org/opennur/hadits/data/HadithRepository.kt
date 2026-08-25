@@ -23,6 +23,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.supervisorScope
@@ -121,7 +122,23 @@ class HadithRepository private constructor(
         hadithDao.setFavorite(hadith.bookId, hadith.number, favorite)
     }
 
-    suspend fun prepareDownloadQueue() = withContext(Dispatchers.IO) {
+    suspend fun ensureDownloadCatalog() = withContext(Dispatchers.IO) {
+        seedFallbackBooks()
+        val books = bookDao.getBooks().ifEmpty { DEFAULT_BOOKS }
+        val existingIds = downloadDao.getAll().mapTo(mutableSetOf()) { it.bookId }
+        val missing = books.filterNot { it.id in existingIds }.map { book ->
+            DownloadEntity(
+                bookId = book.id,
+                bookName = book.name,
+                downloaded = 0,
+                total = book.available,
+                status = DownloadStatus.CANCELLED.name,
+            )
+        }
+        if (missing.isNotEmpty()) downloadDao.upsertAll(missing)
+    }
+
+    suspend fun prepareDownloadQueue(): List<Book> = withContext(Dispatchers.IO) {
         seedFallbackBooks()
         val books = bookDao.getBooks().ifEmpty { DEFAULT_BOOKS }
         downloadDao.upsertAll(
@@ -135,6 +152,23 @@ class HadithRepository private constructor(
                 )
             },
         )
+        books.map { it.toModel() }
+    }
+
+    suspend fun prepareBookDownload(bookId: String) = withContext(Dispatchers.IO) {
+        seedFallbackBooks()
+        val book = bookDao.getBooks().firstOrNull { it.id == bookId } ?: return@withContext
+        downloadDao.upsertAll(
+            listOf(
+                DownloadEntity(
+                    bookId = book.id,
+                    bookName = book.name,
+                    downloaded = 0,
+                    total = book.available,
+                    status = DownloadStatus.QUEUED.name,
+                ),
+            ),
+        )
     }
 
     suspend fun cancelDownloads() = withContext(Dispatchers.IO) {
@@ -145,62 +179,83 @@ class HadithRepository private constructor(
         )
     }
 
+    suspend fun cancelDownload(bookId: String) = withContext(Dispatchers.IO) {
+        downloadDao.updateStatus(
+            bookId = bookId,
+            status = DownloadStatus.CANCELLED.name,
+            error = null,
+            updatedAt = System.currentTimeMillis(),
+        )
+    }
+
+    suspend fun deleteDownloadedBook(bookId: String) = withContext(Dispatchers.IO) {
+        hadithDao.deleteByBook(bookId)
+        downloadDao.resetBook(bookId, System.currentTimeMillis())
+    }
+
     suspend fun downloadAllResources(): Boolean = withContext(Dispatchers.IO) {
         seedFallbackBooks()
         val books = bookDao.getBooks().ifEmpty { DEFAULT_BOOKS }
-        var allSucceeded = true
-        books.forEach { book ->
-            ensureActive()
-            val existing = downloadDao.get(book.id)
-            var downloaded = existing?.downloaded?.coerceIn(0, book.available) ?: 0
-            if (existing?.status == DownloadStatus.COMPLETED.name && downloaded >= book.available) return@forEach
+        books.map { downloadBookInternal(it) }.all { it }
+    }
 
-            downloadDao.updateStatus(
-                bookId = book.id,
-                status = DownloadStatus.DOWNLOADING.name,
-                error = null,
-                updatedAt = System.currentTimeMillis(),
-            )
+    suspend fun downloadBookResources(bookId: String): Boolean = withContext(Dispatchers.IO) {
+        seedFallbackBooks()
+        val book = bookDao.getBooks().firstOrNull { it.id == bookId } ?: return@withContext false
+        downloadBookInternal(book)
+    }
 
-            try {
-                while (downloaded < book.available) {
-                    ensureActive()
-                    val ranges = (downloaded until minOf(downloaded + PAGE_SIZE * DOWNLOAD_BATCH_SIZE, book.available))
-                        .step(PAGE_SIZE)
-                        .map { from -> from to minOf(from + PAGE_SIZE - 1, book.available) }
-                    coroutineScope {
-                        ranges.map { (from, to) ->
-                            async { refreshBook(book.id, from, to).getOrThrow() }
-                        }.awaitAll()
-                    }
-                    downloaded = minOf(downloaded + ranges.size * PAGE_SIZE, book.available)
-                    downloadDao.updateProgress(
-                        bookId = book.id,
-                        downloaded = downloaded,
-                        total = book.available,
-                        status = DownloadStatus.DOWNLOADING.name,
-                        updatedAt = System.currentTimeMillis(),
-                    )
+    private suspend fun downloadBookInternal(book: BookEntity): Boolean {
+        currentCoroutineContext().ensureActive()
+        val existing = downloadDao.get(book.id)
+        var downloaded = existing?.downloaded?.coerceIn(0, book.available) ?: 0
+        if (existing?.status == DownloadStatus.COMPLETED.name && downloaded >= book.available) return true
+
+        downloadDao.updateStatus(
+            bookId = book.id,
+            status = DownloadStatus.DOWNLOADING.name,
+            error = null,
+            updatedAt = System.currentTimeMillis(),
+        )
+
+        return try {
+            while (downloaded < book.available) {
+                currentCoroutineContext().ensureActive()
+                val ranges = (downloaded until minOf(downloaded + PAGE_SIZE * DOWNLOAD_BATCH_SIZE, book.available))
+                    .step(PAGE_SIZE)
+                    .map { from -> from to minOf(from + PAGE_SIZE - 1, book.available) }
+                coroutineScope {
+                    ranges.map { (from, to) ->
+                        async { refreshBook(book.id, from, to).getOrThrow() }
+                    }.awaitAll()
                 }
-                downloadDao.updateStatus(
+                downloaded = minOf(downloaded + ranges.size * PAGE_SIZE, book.available)
+                downloadDao.updateProgress(
                     bookId = book.id,
-                    status = DownloadStatus.COMPLETED.name,
-                    error = null,
-                    updatedAt = System.currentTimeMillis(),
-                )
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                allSucceeded = false
-                downloadDao.updateStatus(
-                    bookId = book.id,
-                    status = DownloadStatus.FAILED.name,
-                    error = "Gagal mengunduh ${book.name}",
+                    downloaded = downloaded,
+                    total = book.available,
+                    status = DownloadStatus.DOWNLOADING.name,
                     updatedAt = System.currentTimeMillis(),
                 )
             }
+            downloadDao.updateStatus(
+                bookId = book.id,
+                status = DownloadStatus.COMPLETED.name,
+                error = null,
+                updatedAt = System.currentTimeMillis(),
+            )
+            true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            downloadDao.updateStatus(
+                bookId = book.id,
+                status = DownloadStatus.FAILED.name,
+                error = "Gagal mengunduh ${book.name}",
+                updatedAt = System.currentTimeMillis(),
+            )
+            false
         }
-        allSucceeded
     }
 
     suspend fun seedFallbackBooks() = withContext(Dispatchers.IO) {

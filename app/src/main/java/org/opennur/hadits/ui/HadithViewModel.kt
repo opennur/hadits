@@ -8,10 +8,12 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import org.opennur.hadits.data.DownloadAllWorker
 import org.opennur.hadits.data.HadithRepository
 import org.opennur.hadits.model.Book
 import org.opennur.hadits.model.DownloadItem
+import org.opennur.hadits.model.DownloadStatus
 import org.opennur.hadits.model.Hadith
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,6 +89,7 @@ class HadithViewModel(
         viewModelScope.launch {
             repository.seedFallbackBooks()
             repository.seedFallbackHadiths()
+            repository.ensureDownloadCatalog()
             refreshBooks()
         }
     }
@@ -244,25 +247,55 @@ class HadithViewModel(
 
     fun startDownloadAll(resume: Boolean = false) {
         viewModelScope.launch {
-            if (!resume) repository.prepareDownloadQueue()
-            val request = OneTimeWorkRequestBuilder<DownloadAllWorker>()
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build(),
-                )
-                .build()
-            workManager.enqueueUniqueWork(
-                DownloadAllWorker.UNIQUE_WORK_NAME,
-                ExistingWorkPolicy.KEEP,
-                request,
-            )
+            val targetIds = if (resume) {
+                downloads.value
+                    .filter { it.status != DownloadStatus.COMPLETED }
+                    .map { it.bookId }
+            } else {
+                repository.prepareDownloadQueue().map { it.id }
+            }
+            targetIds.forEach(::enqueueBookDownload)
         }
     }
 
     fun cancelDownloadAll() {
-        workManager.cancelUniqueWork(DownloadAllWorker.UNIQUE_WORK_NAME)
+        downloads.value.forEach { book ->
+            workManager.cancelUniqueWork(DownloadAllWorker.workName(book.bookId))
+        }
         viewModelScope.launch { repository.cancelDownloads() }
+    }
+
+    fun startDownloadBook(bookId: String, resume: Boolean) {
+        viewModelScope.launch {
+            if (!resume) repository.prepareBookDownload(bookId)
+            enqueueBookDownload(bookId)
+        }
+    }
+
+    fun cancelDownloadBook(bookId: String) {
+        workManager.cancelUniqueWork(DownloadAllWorker.workName(bookId))
+        viewModelScope.launch { repository.cancelDownload(bookId) }
+    }
+
+    fun deleteDownloadedBook(bookId: String) {
+        workManager.cancelUniqueWork(DownloadAllWorker.workName(bookId))
+        viewModelScope.launch { repository.deleteDownloadedBook(bookId) }
+    }
+
+    private fun enqueueBookDownload(bookId: String) {
+        val request = OneTimeWorkRequestBuilder<DownloadAllWorker>()
+            .setInputData(workDataOf(DownloadAllWorker.BOOK_ID_KEY to bookId))
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build(),
+            )
+            .build()
+        workManager.enqueueUniqueWork(
+            DownloadAllWorker.workName(bookId),
+            ExistingWorkPolicy.KEEP,
+            request,
+        )
     }
 
     fun clearSearch() {

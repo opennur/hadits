@@ -11,7 +11,13 @@ class DownloadAllWorker(
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
         return try {
-            val completed = HadithRepository.getInstance(applicationContext).downloadAllResources()
+            val repository = HadithRepository.getInstance(applicationContext)
+            val bookId = inputData.getString(BOOK_ID_KEY)
+            val completed = if (bookId == null) {
+                repository.downloadAllResources()
+            } else {
+                repository.downloadBookResources(bookId)
+            }
             if (completed) Result.success() else Result.failure()
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -21,6 +27,9 @@ class DownloadAllWorker(
     }
 
     companion object {
-        const val UNIQUE_WORK_NAME = "hikmah-download-all"
+        const val BOOK_ID_KEY = "book_id"
+        private const val WORK_NAME_PREFIX = "hikmah-download-book-"
+
+        fun workName(bookId: String): String = "$WORK_NAME_PREFIX$bookId"
     }
 }

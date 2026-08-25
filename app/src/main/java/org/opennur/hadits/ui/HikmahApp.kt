@@ -136,6 +136,9 @@ fun HikmahApp(
                     onBack = { navController.popBackStack() },
                     onStart = viewModel::startDownloadAll,
                     onCancel = viewModel::cancelDownloadAll,
+                    onStartBook = viewModel::startDownloadBook,
+                    onCancelBook = viewModel::cancelDownloadBook,
+                    onDeleteBook = viewModel::deleteDownloadedBook,
                 )
             }
             composable("collection/{bookId}") { entry ->
