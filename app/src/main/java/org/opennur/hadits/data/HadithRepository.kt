@@ -29,8 +29,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ensureActive
+import okhttp3.ConnectionPool
+import okhttp3.Dispatcher
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 class HadithRepository private constructor(
     private val database: HadithDatabase,
@@ -403,12 +407,22 @@ class HadithRepository private constructor(
                     }
                 },
             ).build()
+            val httpDispatcher = Dispatcher().apply {
+                maxRequests = DOWNLOAD_MAX_CONNECTIONS
+                maxRequestsPerHost = DOWNLOAD_MAX_CONNECTIONS
+            }
+            val httpClient = OkHttpClient.Builder()
+                .dispatcher(httpDispatcher)
+                .connectionPool(ConnectionPool(DOWNLOAD_MAX_CONNECTIONS, 5, TimeUnit.MINUTES))
+                .build()
             val retrofit = Retrofit.Builder()
                 .baseUrl(BASE_URL)
+                .client(httpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
             val searchRetrofit = Retrofit.Builder()
                 .baseUrl(SEARCH_BASE_URL)
+                .client(httpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
             return HadithRepository(
@@ -435,6 +449,7 @@ class HadithRepository private constructor(
             else -> this
         }
 
-        private const val DOWNLOAD_BATCH_SIZE = 4
+        private const val DOWNLOAD_MAX_CONNECTIONS = 6
+        private const val DOWNLOAD_BATCH_SIZE = DOWNLOAD_MAX_CONNECTIONS
     }
 }
