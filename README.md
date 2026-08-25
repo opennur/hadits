@@ -4,6 +4,12 @@
 
 Aplikasi Android untuk membaca, mencari, menyimpan, dan mengunduh hadits berbahasa Indonesia.
 
+<img width="240" height="480" src="https://github.com/user-attachments/assets/795d5b15-2750-4995-936a-16fb77d28db2" />
+
+<img width="240" height="480" src="https://github.com/user-attachments/assets/7e8daba8-c389-4374-853d-02b7c884fcbd" />
+
+<img width="240" height="480" src="https://github.com/user-attachments/assets/abaa44cd-0d80-4ad1-84f8-2ed1099b09d7" />
+
 ## Fitur
 
 - Antarmuka Jetpack Compose dengan Material 3.
