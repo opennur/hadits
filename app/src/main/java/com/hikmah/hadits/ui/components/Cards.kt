@@ -34,9 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hikmah.hadits.model.Book
 import com.hikmah.hadits.model.Hadith
-import com.hikmah.hadits.ui.theme.Apricot
-import com.hikmah.hadits.ui.theme.Forest
-import com.hikmah.hadits.ui.theme.Sand
 
 @Composable
 fun BookCard(
@@ -48,7 +45,10 @@ fun BookCard(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Sand),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -57,8 +57,8 @@ fun BookCard(
             Surface(
                 modifier = Modifier.size(42.dp),
                 shape = RoundedCornerShape(14.dp),
-                color = Forest,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Book,
@@ -70,6 +70,7 @@ fun BookCard(
                 Text(
                     text = book.name,
                     style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -125,7 +126,8 @@ fun HadithCard(
                     Icon(
                         imageVector = if (hadith.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = if (hadith.isFavorite) "Hapus dari favorit" else "Simpan ke favorit",
-                        tint = if (hadith.isFavorite) Apricot else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (hadith.isFavorite) MaterialTheme.colorScheme.secondary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

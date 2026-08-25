@@ -77,9 +77,6 @@ import com.hikmah.hadits.ui.components.BookCard
 import com.hikmah.hadits.ui.components.EmptyState
 import com.hikmah.hadits.ui.components.HadithCard
 import com.hikmah.hadits.ui.components.LoadingCard
-import com.hikmah.hadits.ui.theme.Apricot
-import com.hikmah.hadits.ui.theme.Forest
-import com.hikmah.hadits.ui.theme.Sand
 
 @Composable
 fun HomeScreen(
@@ -151,11 +148,15 @@ fun HomeScreen(
                     )
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("Simpan untuk offline", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Simpan untuk offline",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
                         Text(
                             "Unduh semua kitab dan kelola progresnya",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f),
                         )
                     }
                 }
@@ -165,7 +166,10 @@ fun HomeScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(26.dp),
-                colors = CardDefaults.cardColors(containerColor = Forest),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
             ) {
                 Row(
                     modifier = Modifier.padding(22.dp),
@@ -178,24 +182,24 @@ fun HomeScreen(
                         Text(
                             "Baca dengan tenang",
                             style = MaterialTheme.typography.titleLarge,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
                         Text(
                             "Satu hadits kecil bisa mengubah arah hari ini.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.78f),
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f),
                         )
                     }
                     Icon(
                         Icons.Outlined.AutoStories,
                         contentDescription = null,
                         modifier = Modifier.size(60.dp),
-                        tint = Color.White.copy(alpha = 0.88f),
+                        tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.88f),
                     )
                 }
             }
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Bottom,
@@ -213,7 +217,7 @@ fun HomeScreen(
                     Text(
                         "$favoritesCount tersimpan",
                         style = MaterialTheme.typography.labelMedium,
-                        color = Apricot,
+                        color = MaterialTheme.colorScheme.secondary,
                     )
                 }
             }
@@ -471,7 +475,11 @@ fun FavoritesScreen(
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Tersimpan", style = MaterialTheme.typography.labelLarge, color = Forest)
+                Text(
+                    "Tersimpan",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
                 Text("Hadits pilihanmu", style = MaterialTheme.typography.headlineSmall)
                 Text(
                     "Kembali kapan saja untuk membacanya lagi.",
@@ -526,7 +534,8 @@ fun DetailScreen(
                             Icon(
                                 if (item.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                                 contentDescription = "Favorit",
-                                tint = if (item.isFavorite) Apricot else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (item.isFavorite) MaterialTheme.colorScheme.secondary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -600,7 +609,10 @@ private fun DetailContent(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(26.dp),
-            colors = CardDefaults.cardColors(containerColor = Sand),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
         ) {
             Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 if (hadith.arabic.isNotBlank()) {
@@ -620,7 +632,7 @@ private fun DetailContent(
                     Text(
                         hadith.translation,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }

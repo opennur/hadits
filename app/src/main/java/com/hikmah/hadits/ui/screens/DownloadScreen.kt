@@ -44,8 +44,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hikmah.hadits.model.DownloadItem
 import com.hikmah.hadits.model.DownloadStatus
-import com.hikmah.hadits.ui.theme.Apricot
-import com.hikmah.hadits.ui.theme.Forest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +91,10 @@ fun DownloadManagerScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(26.dp),
-                    colors = CardDefaults.cardColors(containerColor = Forest),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
                 ) {
                     Column(
                         modifier = Modifier.padding(22.dp),
@@ -104,28 +105,28 @@ fun DownloadManagerScreen(
                                 Text(
                                     "Baca tanpa internet",
                                     style = MaterialTheme.typography.titleLarge,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                 )
                                 Text(
                                     if (active) "$downloaded dari $total hadits diproses"
                                     else "$completed dari ${downloads.size} kitab tersedia offline",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White.copy(alpha = 0.78f),
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f),
                                 )
                             }
                             Icon(
                                 Icons.Outlined.CloudDownload,
                                 contentDescription = null,
                                 modifier = Modifier.size(46.dp),
-                                tint = Color.White.copy(alpha = 0.9f),
+                                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                             )
                         }
                         if (downloads.isNotEmpty()) {
                             LinearProgressIndicator(
                                 progress = { overallProgress.coerceIn(0f, 1f) },
                                 modifier = Modifier.fillMaxWidth(),
-                                color = Color.White,
-                                trackColor = Color.White.copy(alpha = 0.2f),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                trackColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
                             )
                         }
                     }
@@ -176,7 +177,7 @@ private fun DownloadBookRow(item: DownloadItem) {
         DownloadStatus.DOWNLOADING -> Icons.Outlined.CloudDownload
     }
     val iconColor = when (item.status) {
-        DownloadStatus.COMPLETED -> Forest
+        DownloadStatus.COMPLETED -> MaterialTheme.colorScheme.primary
         DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.primary
     }
@@ -245,7 +246,7 @@ private fun EmptyDownloadState() {
             Icons.Outlined.CloudDownload,
             contentDescription = null,
             modifier = Modifier.size(44.dp),
-            tint = Apricot,
+            tint = MaterialTheme.colorScheme.secondary,
         )
         Text("Belum ada unduhan", style = MaterialTheme.typography.titleMedium)
         Text(
