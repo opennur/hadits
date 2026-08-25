@@ -1,8 +1,8 @@
 # Hikmah
 
-Aplikasi Android untuk membaca, mencari, menyimpan, dan mengunduh hadits berbahasa Indonesia.
+[READ IN ENGLISH](README.en.md)
 
-[Baca dokumentasi dalam bahasa Inggris](README.en.md)
+Aplikasi Android untuk membaca, mencari, menyimpan, dan mengunduh hadits berbahasa Indonesia.
 
 ## Fitur
 
